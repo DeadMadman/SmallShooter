@@ -78,13 +78,13 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\VulkanSDK\1.3.231.0\Include\SDL2;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\VulkanSDK\1.3.231.0\Lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(ProjectDir)SDL2-2.26.0\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(ProjectDir)SDL2-2.26.0\lib\x64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>C:\VulkanSDK\1.3.231.0\Include\SDL2;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\VulkanSDK\1.3.231.0\Lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(ProjectDir)SDL2-2.26.0\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(ProjectDir)SDL2-2.26.0\lib\x64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

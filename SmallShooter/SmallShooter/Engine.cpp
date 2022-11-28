@@ -1,12 +1,9 @@
 ﻿#include "Engine.h"
-
 #include <cstdio>
+#include <SDL_image.h>
 
 Engine::Engine(int w, int h) {
-    if (initSDL(w, h)) {
-        
-       
-    }
+    initSDL(w, h);
 }
 
 bool Engine::initSDL(int w, int h) {
@@ -14,45 +11,110 @@ bool Engine::initSDL(int w, int h) {
         printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
         return false;
     }
-    createWindow(w, h);
-    loadMedia();
+    if(!initModules(w, h)) {
+        printf( "Failed to create window!\n" );
+    }
     return true;
 }
 
-void Engine::createWindow(int w, int h) {
-    window = SDL_CreateWindow("TB2", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, w, h, SDL_WINDOW_SHOWN);
+bool Engine::initModules(int w, int h) {
+    window = SDL_CreateWindow("TB2", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, w, h,
+        SDL_WINDOW_SHOWN);
     if (window == nullptr) {
         printf("Window could not be created! SDL_Error: %s\n", SDL_GetError());
-    } else
+        return false;
+    }
+    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    if(renderer == nullptr) {
+        printf( "Renderer could not be created! SDL Error: %s\n", SDL_GetError() );
+        return false;
+    }
+    SDL_SetRenderDrawColor(renderer, black.r, black.g, black.b, black.a);
+    
+    const int imgFlags = IMG_INIT_PNG;
+    if(!(IMG_Init(imgFlags) & imgFlags)) {
+        printf( "SDL_image could not initialize! SDL_image Error: %s\n", IMG_GetError() );
+        return false;
+    }
+    if(TTF_Init() == -1) {
+        printf( "SDL_ttf could not initialize! SDL_ttf Error: %s\n", TTF_GetError() );
+        return  false;
+    }
+    return true;
+}
+
+bool Engine::loadTexture(std::string path) {
+    SDL_Surface* loadedSurface = IMG_Load(path.c_str());
+    if (loadedSurface == nullptr) {
+        printf( "Unable to load image %s! SDL_image Error: %s\n", path.c_str(), IMG_GetError() );
+        return false;
+    }
+    SDL_Texture* newTexture = SDL_CreateTextureFromSurface(renderer, loadedSurface);
+    if(newTexture == nullptr) {
+        printf( "Unable to create texture from %s! SDL Error: %s\n", path.c_str(), SDL_GetError() );
+        return false;
+    }
+    SDL_FreeSurface(loadedSurface);
+    texture = newTexture;
+    if(texture == nullptr) {
+        printf( "Failed to load texture image!\n" );
+        return false;
+    }
+    return true;
+}
+
+bool Engine::loadFont(const char* path, int size) {
+    font = TTF_OpenFont( path, size);
+    if(font == nullptr) {
+        printf( "Failed to load lazy font! SDL_ttf Error: %s\n", TTF_GetError() );
+        return  false;
+    }
+    return true;
+}
+
+void Engine::drawTexture(SDL_Rect src, SDL_FRect dst) {
+    SDL_RenderCopyF(renderer, texture, &src, &dst);
+}
+
+void Engine::setText(const char* text) {
+    SDL_Surface* textSurface = TTF_RenderText_Solid(font, text, yellow);
+    if(textSurface == nullptr)
     {
-        loadSurface();
+        printf( "Unable to render text surface! SDL_ttf Error: %s\n", TTF_GetError() );
+        return;
     }
-}
-
-void Engine::loadSurface() {
-    screenSurface = SDL_GetWindowSurface(window);
-    SDL_FillRect(screenSurface, nullptr, SDL_MapRGB(screenSurface->format, 0xFF, 0xFF, 0xFF));
-    SDL_UpdateWindowSurface(window);
-}
-
-void Engine::loadMedia() {
-    imgSurface = SDL_LoadBMP("img.bmp");
-    if( imgSurface == NULL ) {
-        printf( "Unable to load image %s! SDL Error: %s\n", ".bmp", SDL_GetError() );
+    textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+    if(textTexture == nullptr) {
+        printf( "Unable to create texture from rendered text! SDL Error: %s\n", SDL_GetError());
+        return;
     }
+    w = textSurface->w;
+    h = textSurface->h;
+    SDL_FreeSurface(textSurface);
 }
 
-void Engine::update() {
-    SDL_BlitSurface( imgSurface, &src, screenSurface, &dst );
-    SDL_UpdateWindowSurface(window);
+void Engine::drawText(float x, float y) {
+    SDL_FRect dst{ x - w / 2, y - h / 2, w, h };
+    SDL_RenderCopyF(renderer, textTexture, nullptr, &dst);
+}
+
+void Engine::render() {
+    SDL_RenderClear(renderer);
+}
+
+void Engine::present() {
+    SDL_RenderPresent(renderer);
 }
 
 void Engine::cleanup() {
-    SDL_FreeSurface(imgSurface);
-    SDL_FreeSurface(screenSurface);
+    SDL_DestroyTexture(texture);
+    texture = nullptr;
+    
+    SDL_DestroyRenderer(renderer);
+    renderer = nullptr;
     SDL_DestroyWindow(window);
-
-    imgSurface = nullptr;
-    screenSurface = nullptr;
     window = nullptr;
+
+    IMG_Quit();
+    SDL_Quit();
 }

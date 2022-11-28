@@ -9,6 +9,7 @@ public:
         SDL_Scancode moveRight = SDL_SCANCODE_D;
         SDL_Scancode moveUp = SDL_SCANCODE_W;
         SDL_Scancode moveDown = SDL_SCANCODE_S;
+        SDL_Scancode shoot = SDL_SCANCODE_SPACE;
     };
 
     std::array<int, SDL_NUM_SCANCODES> prevStates;

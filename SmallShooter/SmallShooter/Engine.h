@@ -1,5 +1,8 @@
 ﻿#pragma once
+
 #include <SDL.h>
+#include <SDL_ttf.h>
+#include <string>
 
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
@@ -8,20 +11,32 @@ class Engine {
 public:
     Engine(int w, int h);
     
-    bool initSDL(int w, int h);
-    void createWindow(int w, int h);
-    void loadSurface();
-    void loadMedia();
+    bool loadTexture(std::string path);
+    bool loadFont(const char* path, int size);
+    void drawTexture(SDL_Rect src, SDL_FRect dst);
 
-    void update();
+    void setText(const char* text);
+    void drawText(float x, float y);
+    
+    void render();
+    void present();
     void cleanup();
-
 private:
+    
+    bool initSDL(int w, int h);
+    bool initModules(int w, int h);
+    
     SDL_Window* window = nullptr;
-    SDL_Surface* screenSurface = nullptr;
+    SDL_Renderer* renderer = nullptr;
+    
+    SDL_Texture* texture = nullptr;
+    SDL_Texture* textTexture = nullptr;
+    TTF_Font* font = nullptr;
 
-    SDL_Surface* imgSurface = nullptr;
+    float w, h;
 
-    SDL_Rect src = {72, 114, 45, 45};
-    SDL_Rect dst = {100, 100, 300, 300};
+    SDL_Color black{ 129, 151, 150, 255 };
+    SDL_Color blue{ 164, 221, 216, 255 };
+    SDL_Color yellow{ 232, 193, 112, 255 };
+
 };

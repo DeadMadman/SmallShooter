@@ -1,13 +1,17 @@
 #include <chrono>
 #include <SDL.h>
+#include <vector>
+
 
 #include "Engine.h"
+#include "Entity.h"
+#include "EntityManager.h"
 #include "Input.h"
 
 int main(int argc, char* args[])
 {
 	SDL_Rect spriteSrc{ 0, 0, 16, 9 };
-	float scale = 4;
+	float scale = 4;Your location
 	float margin = 48;
 	int width = 600;
 	int height = 600;
@@ -29,6 +33,18 @@ int main(int argc, char* args[])
 	};
 	State currentState = State::START;
 
+	//create entities
+	EntityManager entityManager;
+	Entity* e = entityManager.createEntity();
+	entityManager.setPositionField(e, {10.0f, height * 0.5f + 8});
+	entityManager.setSourceField(e, spriteSrc);
+	
+	for (int i = 0; i < 50000; ++i) {
+		Entity* e = entityManager.createEntity();
+		entityManager.setPositionField(e, {10.0f, 10.0f});
+		entityManager.setSourceField(e, spriteSrc);
+	}
+	
 	while (!quit) {
 		SDL_Event e;
 		while (SDL_PollEvent(&e)) {
@@ -51,12 +67,21 @@ int main(int argc, char* args[])
 		frameTime = std::min(frameTime, 0.5f);
 		
 		inputController.update(frameTime);
-
 		engine.render();
 
 		if (currentState == State::GAME) {
-			engine.drawTexture(spriteSrc, {25, 25, spriteSrc.w * scale, spriteSrc.h * scale});
-			
+			for (auto e : entityManager.entities) {
+				if (e.hasComponent(Entity::Components::POSITION)) {
+					updatePosition(entityManager.positions[e.index]);
+				}
+			}
+			for (auto e : entityManager.entities) {
+				if (e.hasComponent(Entity::Components::SCR)) {
+					engine.drawTexture(entityManager.sources[e.index], {
+						entityManager.positions[e.index].x, entityManager.positions[e.index].y,
+						entityManager.sources[e.index].w * scale, entityManager.sources[e.index].h * scale});
+				}
+			}
 		}
 		else {
 			if(inputController.isDown(inputController.keys.shoot)) {

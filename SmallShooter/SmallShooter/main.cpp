@@ -10,8 +10,11 @@
 
 int main(int argc, char* args[])
 {
-	SDL_Rect spriteSrc{ 0, 0, 16, 9 };
-	float scale = 4;Your location
+	SDL_Rect playerSpriteSrc{ 0, 0, 16, 9 };
+	SDL_Rect enemySpriteSrc{ 0, 9, 16, 9 };
+	SDL_Rect bulletSpriteSrc{ 0, 36, 9, 9 };
+	
+	float scale = 4;
 	float margin = 48;
 	int width = 600;
 	int height = 600;
@@ -36,13 +39,35 @@ int main(int argc, char* args[])
 	//create entities
 	EntityManager entityManager;
 	Entity* e = entityManager.createEntity();
-	entityManager.setPositionField(e, {10.0f, height * 0.5f + 8});
-	entityManager.setSourceField(e, spriteSrc);
+	entityManager.setPositionComponent(e, {10.0f, height * 0.5f + 8});
+	entityManager.setVelocityComponent(e, {0.0f, 0.0f} );
+	entityManager.setSourceComponent(e, playerSpriteSrc);
+	entityManager.setHealthComponent(e, 3);
+	entityManager.setCollisionComponent(e);
+	entityManager.setPlayerComponent(e);
 	
-	for (int i = 0; i < 50000; ++i) {
+	for (int i = 0; i < 20; ++i) {
 		Entity* e = entityManager.createEntity();
-		entityManager.setPositionField(e, {10.0f, 10.0f});
-		entityManager.setSourceField(e, spriteSrc);
+		
+		entityManager.setPositionComponent(e, {static_cast<float>(width), i * 600.0f / 20.0f});
+		entityManager.setVelocityComponent(e, {-100.0f, 0.0f} );
+		entityManager.setSourceComponent(e, enemySpriteSrc);
+		entityManager.setHealthComponent(e, 1);
+		entityManager.setCollisionComponent(e);
+		entityManager.setEnemyComponent(e);
+	}
+
+	//bullets
+	for (int i = 0; i < 20; ++i) {
+		Entity* e = entityManager.createEntity();
+		
+		entityManager.setPositionComponent(e, {static_cast<float>(width + 20.0f),
+			static_cast<float>(width / 2)});
+		entityManager.setVelocityComponent(e, {100.0f, 0.0f} );
+		entityManager.setSourceComponent(e, bulletSpriteSrc);
+		entityManager.setHealthComponent(e, 1);
+		entityManager.setCollisionComponent(e);
+		entityManager.setBulletComponent(e);
 	}
 	
 	while (!quit) {
@@ -70,18 +95,21 @@ int main(int argc, char* args[])
 		engine.render();
 
 		if (currentState == State::GAME) {
-			for (auto e : entityManager.entities) {
-				if (e.hasComponent(Entity::Components::POSITION)) {
-					updatePosition(entityManager.positions[e.index]);
-				}
+			Vector2 dir{0, 0};
+			float speed = 100;
+			if(inputController.isDown(inputController.keys.moveUp)) {
+				dir.y -= speed;
 			}
-			for (auto e : entityManager.entities) {
-				if (e.hasComponent(Entity::Components::SCR)) {
-					engine.drawTexture(entityManager.sources[e.index], {
-						entityManager.positions[e.index].x, entityManager.positions[e.index].y,
-						entityManager.sources[e.index].w * scale, entityManager.sources[e.index].h * scale});
-				}
+			if(inputController.isDown(inputController.keys.moveDown)) {
+				dir.y += speed;
 			}
+			if(inputController.isDown(inputController.keys.shoot)) {
+				entityManager.updateShooting(frameTime);
+			}
+			entityManager.updateInput(dir);
+			entityManager.updatePositions(frameTime);
+			entityManager.collide();
+			entityManager.renderEntities(engine, scale);
 		}
 		else {
 			if(inputController.isDown(inputController.keys.shoot)) {

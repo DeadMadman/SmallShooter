@@ -26,8 +26,4 @@ void Input::refresh() {
     memcpy(prevStates.data(), currStates.data(), sizeof(currStates));
 }
 
-void Input::update(float dt) {
-    if (isDown(keys.moveDown)) {
-        std::cout << "down\n" ;
-    }
-}
+void Input::update(float dt) {}

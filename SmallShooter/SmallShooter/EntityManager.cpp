@@ -2,7 +2,7 @@
 
 Entity* EntityManager::createEntity() {
     entities.emplace_back(entities.size());
-
+    
     healths.push_back(0);
     positions.push_back({0, 0});
     velocities.push_back({0, 0});
@@ -49,31 +49,36 @@ void EntityManager::setBulletComponent(Entity* e) {
 
 void EntityManager::renderEntities(Engine& eng, float scale) {
     std::vector<Entity*> entitiesVector;
-    for (auto e : entities) {
+    for (auto& e : entities) {
         if (e.hasComponent(Entity::Components::SCR)) {
             entitiesVector.push_back(&e);
         }
     }
-    for (auto e : entities) {
-        eng.drawTexture(sources[e.index],{positions[e.index].x, positions[e.index].y,
-                    sources[e.index].w * scale, sources[e.index].h * scale});
+    for (auto& e : entitiesVector) {
+        eng.drawTexture(sources[e->index],{positions[e->index].x, positions[e->index].y,
+                    sources[e->index].w * scale, sources[e->index].h * scale});
     }
 }
 
-void EntityManager::updatePositions(float dt) {
+void EntityManager::updatePositions(float dt, SDL_FRect bounds) {
     std::vector<Entity*> entitiesVector;
     for (auto& e : entities) {
         if (e.hasComponent(Entity::Components::POSITION) && e.hasComponent(Entity::Components::VELOCITY)) {
             entitiesVector.push_back(&e);
         }
     }
-    for (auto e : entitiesVector) {
-        updatePosition( positions[e->index], velocities[e->index], dt);
+    for (auto& e : entitiesVector) {
+        Vector2 pos = positions[e->index];
+        if (pos.x < bounds.x || pos.x > bounds.w || pos.y < bounds.y || pos.y > bounds.h) {
+            e->components = 0;
+        }
+        else {
+            updatePosition( positions[e->index], velocities[e->index], dt);
+        }
     }
 }
 
 void EntityManager::collide() {
-    //todo 
     std::vector<Entity*> colliders;
     for (auto& collider : entities) {
         if (collider.hasComponent(Entity::Components::COLLISION)) {
@@ -103,7 +108,7 @@ void EntityManager::collide() {
                 static_cast<float>(sources[other->index].w), static_cast<float>(sources[other->index].h)};
             SDL_FRect result;
             if (SDL_IntersectFRect(&collider, &otherCollider, &result)) {
-                onCollision(*e, healths[e->index]);
+                //onCollision(*e, healths[e->index]);
                 onCollision(*other, healths[other->index]);
             }
         }
@@ -117,37 +122,68 @@ void EntityManager::updateInput(Vector2 vel) {
             players.push_back(&e);
         }
     }
-    for (auto player : players) {
+    for (auto& player : players) {
         velocities[player->index] = vel;
     }
 }
 
-void EntityManager::updateShooting(float dt) {
+void EntityManager::updateShooting(float dt, SDL_Rect bulletSpriteSrc) {
     std::vector<Entity*> players;
     for (auto& e : entities) {
         if (e.hasComponent(Entity::Components::PLAYER)) {
             players.push_back(&e);
         }
     }
-    std::vector<Entity*> bullets;
-    for (auto& e : entities) {
-        if (e.hasComponent(Entity::Components::BULLET)) {
-            bullets.push_back(&e);
-        }
-    }
-    int i = 0;
-    for (auto player : players) {
-        while (healths[bullets[i]->index] <= 0) {
-            i++;
-            if (i > bullets.size()) {
-                i = 0;
-            }
-        }
-        positions[bullets[i]->index] = positions[player->index];
-        healths[bullets[i]->index] = 0;
-
+    
+    for (auto& player : players) {
+       
+        //todo add time for cooldown
+        Entity* e = getPooledEntity();
+        Vector2 spawPoint = {positions[player->index].x + sources[player->index].w,
+            positions[player->index].y + sources[player->index].h / 2.0f};
+        
+        poolBullet(e, bulletSpriteSrc, spawPoint);
+        return;
     }
 }
 
+void EntityManager::createPool() {
+    createEntity();
+}
 
+Entity* EntityManager::getPooledEntity() {
+    for (auto& e : entities) {
+        if (e.components == 0) {
+            return &e;
+        }
+    }
+    Entity* e = createEntity();
+    return e;
+}
 
+void EntityManager::poolPlayer(Entity* e, SDL_Rect playerSpriteSrc, int height) {
+    setPositionComponent(e, {10.0f, height * 0.5f + 8});
+    setVelocityComponent(e, {0.0f, 0.0f} );
+    setSourceComponent(e, playerSpriteSrc);
+    setHealthComponent(e, 3);
+    setCollisionComponent(e);
+    setPlayerComponent(e);
+}
+
+void EntityManager::createEnemy(Entity* e, SDL_Rect enemySpriteSrc, int width, int i) {
+    setPositionComponent(e, {static_cast<float>(width), i * 600.0f / 20.0f});
+    setVelocityComponent(e, {-100.0f, 0.0f} );
+    setSourceComponent(e, enemySpriteSrc);
+    setHealthComponent(e, 1);
+    setCollisionComponent(e);
+    setEnemyComponent(e);
+}
+
+void EntityManager::poolBullet(Entity* e, SDL_Rect bulletSpriteSrc, Vector2 pos) {
+    setPositionComponent(e, pos);
+    setVelocityComponent(e, {100.0f, 0.0f} );
+    setSourceComponent(e, bulletSpriteSrc);
+    setHealthComponent(e, 1);
+    setCollisionComponent(e);
+    setBulletComponent(e);
+}

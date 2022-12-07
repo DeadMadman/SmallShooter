@@ -7,6 +7,7 @@
 class EntityManager {
 public:
     std::vector<Entity> entities{};
+    
     std::vector<int> healths{};
     std::vector<Vector2> positions{};
     std::vector<Vector2> velocities{};
@@ -24,9 +25,18 @@ public:
     void setBulletComponent(Entity* e);
     
     void renderEntities(Engine& eng, float scale);
-    void updatePositions(float dt);
+    void updatePositions(float dt, SDL_FRect bounds);
     void collide();
     
     void updateInput(Vector2 vel);
-    void updateShooting(float dt);
+    void updateShooting(float dt, SDL_Rect bulletSpriteSrc);
+    
+    void createPool();
+
+    Entity* getPooledEntity();
+    
+    void poolPlayer(Entity* e,SDL_Rect playerSpriteSrc, int height);
+    void createEnemy(Entity* e,SDL_Rect enemySpriteSrc, int width, int i);
+
+    void poolBullet(Entity* e, SDL_Rect bulletSpriteSrc, Vector2 pos);
 };

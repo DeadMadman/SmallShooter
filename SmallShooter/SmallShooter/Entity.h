@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include <bitset>
 #include <SDL.h>
+#include <vector>
 
 struct Vector2
 {
@@ -11,7 +12,6 @@ struct Vector2
 class Entity {
 public:
     Entity(int i) { index = i; }
-    
     int index;
 
     enum Components : unsigned long long {
@@ -42,8 +42,8 @@ inline void updatePosition(Vector2& pos, Vector2 vel, float dt) {
 inline void onCollision(Entity& e, int& hp) {
     if (e.hasComponent(Entity::HEALTH)) {
         hp--;
-        if (hp == 0) {
-            //todo kill
+        if (hp < 0) {
+            e.components = 0;
         }
     }
 }

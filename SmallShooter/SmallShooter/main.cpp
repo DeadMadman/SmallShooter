@@ -18,6 +18,7 @@ int main(int argc, char* args[])
 	float margin = 48;
 	int width = 600;
 	int height = 600;
+	SDL_FRect bounds = {-margin, -margin, width + margin, height + margin};
 	
 	Engine engine{width, height};
 	engine.loadTexture("Warship.png");
@@ -38,36 +39,16 @@ int main(int argc, char* args[])
 
 	//create entities
 	EntityManager entityManager;
-	Entity* e = entityManager.createEntity();
-	entityManager.setPositionComponent(e, {10.0f, height * 0.5f + 8});
-	entityManager.setVelocityComponent(e, {0.0f, 0.0f} );
-	entityManager.setSourceComponent(e, playerSpriteSrc);
-	entityManager.setHealthComponent(e, 3);
-	entityManager.setCollisionComponent(e);
-	entityManager.setPlayerComponent(e);
-	
-	for (int i = 0; i < 20; ++i) {
-		Entity* e = entityManager.createEntity();
-		
-		entityManager.setPositionComponent(e, {static_cast<float>(width), i * 600.0f / 20.0f});
-		entityManager.setVelocityComponent(e, {-100.0f, 0.0f} );
-		entityManager.setSourceComponent(e, enemySpriteSrc);
-		entityManager.setHealthComponent(e, 1);
-		entityManager.setCollisionComponent(e);
-		entityManager.setEnemyComponent(e);
+	for (int i = 0; i < 200; ++i) {
+		entityManager.createPool();
 	}
 
-	//bullets
+	Entity* e = entityManager.getPooledEntity();
+	entityManager.poolPlayer(e, playerSpriteSrc, height);
+	
 	for (int i = 0; i < 20; ++i) {
-		Entity* e = entityManager.createEntity();
-		
-		entityManager.setPositionComponent(e, {static_cast<float>(width + 20.0f),
-			static_cast<float>(width / 2)});
-		entityManager.setVelocityComponent(e, {100.0f, 0.0f} );
-		entityManager.setSourceComponent(e, bulletSpriteSrc);
-		entityManager.setHealthComponent(e, 1);
-		entityManager.setCollisionComponent(e);
-		entityManager.setBulletComponent(e);
+		e = entityManager.getPooledEntity();
+		entityManager.createEnemy(e, enemySpriteSrc, width, i);
 	}
 	
 	while (!quit) {
@@ -104,10 +85,10 @@ int main(int argc, char* args[])
 				dir.y += speed;
 			}
 			if(inputController.isDown(inputController.keys.shoot)) {
-				entityManager.updateShooting(frameTime);
+				entityManager.updateShooting(frameTime, bulletSpriteSrc);
 			}
 			entityManager.updateInput(dir);
-			entityManager.updatePositions(frameTime);
+			entityManager.updatePositions(frameTime, bounds);
 			entityManager.collide();
 			entityManager.renderEntities(engine, scale);
 		}

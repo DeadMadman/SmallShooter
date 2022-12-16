@@ -8,17 +8,27 @@
 #include "EntityManager.h"
 #include "Input.h"
 
+void spawnEnemy(SDL_Rect enemySpriteSrc, int scale, int height, Vector2& enemyPosition, EntityManager& entityManager) {
+	Entity e = entityManager.getPooledEntity();
+	enemyPosition.y = rand() % height - enemySpriteSrc.h * scale;
+	entityManager.poolEnemy(e, enemySpriteSrc, enemyPosition, scale);
+}
+
 int main(int argc, char* args[])
 {
-	SDL_Rect playerSpriteSrc{ 0, 0, 16, 9 };
-	SDL_Rect enemySpriteSrc{ 0, 9, 16, 9 };
-	SDL_Rect bulletSpriteSrc{ 0, 36, 9, 9 };
+	SDL_Rect playerSpriteSrc{ 0, 8, 15, 8+4 };
+	SDL_Rect enemySpriteSrc{ 0, 0, 15, 8 };
+	SDL_Rect bulletSpriteSrc{ 0, 16+4, 4, 4 };
 	
-	float scale = 4;
-	float margin = 48;
+	int scale = 4;
+	int margin = 48;
 	int width = 600;
 	int height = 600;
-	SDL_FRect bounds = {-margin, -margin, width + margin, height + margin};
+	SDL_Rect bounds = {-margin, -margin, width + margin, height + margin};
+
+
+	Vector2 enemyPosition = {width, height};
+	int spawnTimer = 500;
 	
 	Engine engine{width, height};
 	engine.loadTexture("Warship.png");
@@ -39,17 +49,16 @@ int main(int argc, char* args[])
 
 	//create entities
 	EntityManager entityManager;
-	for (int i = 0; i < 200; ++i) {
+	for (int i = 0; i < 3000; ++i) {
 		entityManager.createPool();
 	}
 
-	Entity* e = entityManager.getPooledEntity();
-	entityManager.poolPlayer(e, playerSpriteSrc, height);
+	Entity e = entityManager.getPooledEntity();
+	entityManager.poolPlayer(e, playerSpriteSrc, {10, height / 2 + 8}, scale);
 	
 	for (int i = 0; i < 20; ++i) {
-		e = entityManager.getPooledEntity();
-		entityManager.createEnemy(e, enemySpriteSrc, width, i);
-	}
+		spawnEnemy(enemySpriteSrc, scale, height, enemyPosition, entityManager);
+	} 
 	
 	while (!quit) {
 		SDL_Event e;
@@ -70,14 +79,13 @@ int main(int argc, char* args[])
 		auto newTime = std::chrono::high_resolution_clock::now();
 		float frameTime = std::chrono::duration<float, std::chrono::seconds::period>(newTime - currentTime).count();
 		currentTime = newTime;
-		frameTime = std::min(frameTime, 0.5f);
 		
 		inputController.update(frameTime);
 		engine.render();
 
 		if (currentState == State::GAME) {
 			Vector2 dir{0, 0};
-			float speed = 100;
+			int speed = 100;
 			if(inputController.isDown(inputController.keys.moveUp)) {
 				dir.y -= speed;
 			}
@@ -85,10 +93,18 @@ int main(int argc, char* args[])
 				dir.y += speed;
 			}
 			if(inputController.isDown(inputController.keys.shoot)) {
-				entityManager.updateShooting(frameTime, bulletSpriteSrc);
+				entityManager.updateShooting(frameTime, bulletSpriteSrc, scale);
 			}
 			entityManager.updateInput(dir);
-			entityManager.updatePositions(frameTime, bounds);
+			
+			static Uint64 tp = 0;
+			if (tp < SDL_GetTicks64()) {
+				tp = SDL_GetTicks64() + spawnTimer;
+				for (int i = 0; i < 10; ++i) {
+					spawnEnemy(enemySpriteSrc, scale, height, enemyPosition, entityManager);
+				}
+			}
+			entityManager.updatePositions(frameTime, bounds, scale);
 			entityManager.collide();
 			entityManager.renderEntities(engine, scale);
 		}
@@ -106,8 +122,6 @@ int main(int argc, char* args[])
 		engine.present();
 		SDL_Delay(16);
 	}
-   
 	engine.cleanup();
-    
 	return 0;
 }

@@ -76,6 +76,10 @@ void Engine::drawTexture(SDL_Rect src, SDL_FRect dst) {
     SDL_RenderCopyF(renderer, texture, &src, &dst);
 }
 
+void Engine::drawTexture(SDL_Rect src, SDL_Rect dst) {
+    SDL_RenderCopy(renderer, texture, &src, &dst);
+}
+
 void Engine::setText(const char* text) {
     SDL_Surface* textSurface = TTF_RenderText_Solid(font, text, yellow);
     if(textSurface == nullptr)
@@ -93,9 +97,9 @@ void Engine::setText(const char* text) {
     SDL_FreeSurface(textSurface);
 }
 
-void Engine::drawText(float x, float y) {
-    SDL_FRect dst{ x - w / 2, y - h / 2, w, h };
-    SDL_RenderCopyF(renderer, textTexture, nullptr, &dst);
+void Engine::drawText(int x, int y) {
+    SDL_Rect dst{ x - w / 2, y - h / 2, w, h };
+    SDL_RenderCopy(renderer, textTexture, nullptr, &dst);
 }
 
 void Engine::render() {

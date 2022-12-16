@@ -1,12 +1,16 @@
 ﻿#pragma once
 #include <bitset>
 #include <SDL.h>
-#include <vector>
+#include <math.h>
 
 struct Vector2
 {
-    float x = 0;
-    float y = 0;
+    int x = 0;
+    int y = 0;
+};
+
+struct Player {
+    Uint64 shootingCooldown = 1000;
 };
 
 class Entity {
@@ -22,12 +26,12 @@ public:
         HEALTH = 1 << 4,
         PLAYER = 1 << 5,
         ENEMY = 1 << 6,
-        BULLET = 1 << 7,
-        SIZE = 1 << 8
+        PLAYER_BULLET = 1 << 7,
+        ENEMY_BULLET = 1 << 8,
+        DST = 1 << 9,
+        SIZE = 1 << 10
     };
-    std::bitset<SIZE> components;
-
-    bool hasComponent(Components c);
+    bool hasComponent(class EntityManager* manager, Components c);
 };
 
 static std::bitset<Entity::Components::SIZE> asBitset(Entity::Components c) {
@@ -35,15 +39,6 @@ static std::bitset<Entity::Components::SIZE> asBitset(Entity::Components c) {
 }
 
 inline void updatePosition(Vector2& pos, Vector2 vel, float dt) {
-    pos.x += vel.x * dt;
-    pos.y += vel.y * dt;
-}
-
-inline void onCollision(Entity& e, int& hp) {
-    if (e.hasComponent(Entity::HEALTH)) {
-        hp--;
-        if (hp < 0) {
-            e.components = 0;
-        }
-    }
+    pos.x += lroundf(static_cast<float>(vel.x) * dt);
+    pos.y += lroundf( static_cast<float>(vel.y) * dt);
 }

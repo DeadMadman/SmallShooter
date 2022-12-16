@@ -1,5 +1,5 @@
 ﻿#include "Entity.h"
-
-bool Entity::hasComponent(Components c) {
-    return (components & asBitset(c)) != 0;
+#include "EntityManager.h"
+bool Entity::hasComponent(EntityManager* manager, Components c) {
+    return (manager->components[this->index] & asBitset(c)) != 0;
 }

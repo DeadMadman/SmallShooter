@@ -3,6 +3,7 @@
 #include <SDL.h>
 #include <SDL_ttf.h>
 #include <string>
+#include <vector>
 
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
@@ -14,9 +15,10 @@ public:
     bool loadTexture(std::string path);
     bool loadFont(const char* path, int size);
     void drawTexture(SDL_Rect src, SDL_FRect dst);
+    void drawTexture(SDL_Rect src, SDL_Rect dst);
 
     void setText(const char* text);
-    void drawText(float x, float y);
+    void drawText(int x, int y);
     
     void render();
     void present();
@@ -33,7 +35,7 @@ private:
     SDL_Texture* textTexture = nullptr;
     TTF_Font* font = nullptr;
 
-    float w, h;
+    int w, h;
 
     SDL_Color black{ 129, 151, 150, 255 };
     SDL_Color blue{ 164, 221, 216, 255 };

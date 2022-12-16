@@ -1,149 +1,199 @@
 ﻿#include "EntityManager.h"
 
-Entity* EntityManager::createEntity() {
+Entity EntityManager::createEntity() {
     entities.emplace_back(entities.size());
+    components.push_back(0);
     
     healths.push_back(0);
     positions.push_back({0, 0});
     velocities.push_back({0, 0});
     sources.push_back({0,0,0,0});
-    
-    return &entities[entities.size() - 1];
+    destinations.push_back({0, 0, 0, 0});
+
+    players.push_back({});
+    return entities[entities.size() - 1];
 }
 
-void EntityManager::setHealthComponent(Entity* e, int hp) {
-    e->components |= Entity::Components::HEALTH;
-    healths[e->index] = hp;
+void EntityManager::setHealthComponent(Entity e, int hp) {
+    components[e.index] |= Entity::Components::HEALTH;
+    healths[e.index] = hp;
 }
 
-void EntityManager::setPositionComponent(Entity* e, Vector2 pos) {
-    e->components |= Entity::Components::POSITION;
-    positions[e->index] = pos;
+void EntityManager::setPositionComponent(Entity e, Vector2 pos) {
+    components[e.index] |= Entity::Components::POSITION;
+    positions[e.index] = pos;
 }
 
-void EntityManager::setVelocityComponent(Entity* e, Vector2 vel) {
-    e->components |= Entity::Components::VELOCITY;
-    velocities[e->index] = vel;
+void EntityManager::setVelocityComponent(Entity e, Vector2 vel) {
+    components[e.index] |= Entity::Components::VELOCITY;
+    velocities[e.index] = vel;
 }
 
-void EntityManager::setSourceComponent(Entity* e, SDL_Rect src) {
-    e->components |= Entity::Components::SCR;
-    sources[e->index] = src;
+void EntityManager::setSourceComponent(Entity e, SDL_Rect src) {
+    components[e.index] |= Entity::Components::SCR;
+    sources[e.index] = src;
 }
 
-void EntityManager::setCollisionComponent(Entity* e) {
-    e->components |= Entity::Components::COLLISION;
+void EntityManager::setDestinationComponent(Entity e, SDL_Rect dst) {
+    components[e.index] |= Entity::Components::DST;
+    destinations[e.index] = dst;
 }
 
-void EntityManager::setPlayerComponent(Entity* e) {
-    e->components |= Entity::Components::PLAYER;
+void EntityManager::setCollisionComponent(Entity e) {
+    components[e.index] |= Entity::Components::COLLISION;
 }
 
-void EntityManager::setEnemyComponent(Entity* e) {
-    e->components |= Entity::Components::ENEMY;
+void EntityManager::setPlayerComponent(Entity e, Uint64 cool) {
+    components[e.index] |= Entity::Components::PLAYER;
+    players[e.index].shootingCooldown = cool;
 }
 
-void EntityManager::setBulletComponent(Entity* e) {
-    e->components |= Entity::Components::BULLET;
+void EntityManager::setEnemyComponent(Entity e) {
+    components[e.index] |= Entity::Components::ENEMY;
 }
 
-void EntityManager::renderEntities(Engine& eng, float scale) {
-    std::vector<Entity*> entitiesVector;
+void EntityManager::setPlayerBulletComponent(Entity e) {
+    components[e.index] |= Entity::Components::PLAYER_BULLET;
+}
+
+void EntityManager::renderEntities(Engine& eng, int scale) {
+    std::vector<Entity> entitiesVector;
     for (auto& e : entities) {
-        if (e.hasComponent(Entity::Components::SCR)) {
-            entitiesVector.push_back(&e);
+        if (e.hasComponent(this, Entity::Components::SCR) && e.hasComponent(this, Entity::Components::DST)) {
+            entitiesVector.push_back(e);
         }
     }
     for (auto& e : entitiesVector) {
-        eng.drawTexture(sources[e->index],{positions[e->index].x, positions[e->index].y,
-                    sources[e->index].w * scale, sources[e->index].h * scale});
+        eng.drawTexture(sources[e.index], destinations[e.index]);
     }
 }
 
-void EntityManager::updatePositions(float dt, SDL_FRect bounds) {
-    std::vector<Entity*> entitiesVector;
+void EntityManager::updatePositions(float dt, SDL_Rect bounds, int scale) {
+    std::vector<Entity> entitiesVector;
     for (auto& e : entities) {
-        if (e.hasComponent(Entity::Components::POSITION) && e.hasComponent(Entity::Components::VELOCITY)) {
-            entitiesVector.push_back(&e);
+        if (e.hasComponent(this, Entity::Components::POSITION) && e.hasComponent(this, Entity::Components::VELOCITY)) {
+
+            Vector2 pos = positions[e.index];
+            if (pos.x <= bounds.x || pos.x >= bounds.w || pos.y <= bounds.y || pos.y >= bounds.h) {
+                damageEntity(e);
+            }
+            
+            entitiesVector.push_back(e);
         }
     }
     for (auto& e : entitiesVector) {
-        Vector2 pos = positions[e->index];
-        if (pos.x < bounds.x || pos.x > bounds.w || pos.y < bounds.y || pos.y > bounds.h) {
-            e->components = 0;
+        updatePosition( positions[e.index], velocities[e.index], dt);
+    }
+
+    for (auto& e : entitiesVector) {
+        destinations[e.index].x = positions[e.index].x;
+        destinations[e.index].y = positions[e.index].y;
+        destinations[e.index].w = sources[e.index].w * scale;
+        destinations[e.index].h = sources[e.index].h * scale;
+    }
+}
+
+void EntityManager::damageEntity(Entity enemy) {
+    if (enemy.hasComponent(this,Entity::HEALTH)) {
+        healths[enemy.index]--; 
+        if (healths[enemy.index] <= 0) {
+            components[enemy.index] = 0;
         }
-        else {
-            updatePosition( positions[e->index], velocities[e->index], dt);
-        }
+    }
+    else {
+        components[enemy.index] = 0;
     }
 }
 
 void EntityManager::collide() {
-    std::vector<Entity*> colliders;
+    std::vector<Entity> colliders;
     for (auto& collider : entities) {
-        if (collider.hasComponent(Entity::Components::COLLISION)) {
-            colliders.push_back(&collider);
+        if (collider.hasComponent(this, Entity::Components::COLLISION)) {
+            colliders.push_back(collider);
         }
     }
-    std::vector<Entity*> players;
+    std::vector<Entity> playerEntities;
     for (auto& collider : colliders) {
-        if (collider->hasComponent(Entity::Components::PLAYER)) {
-            players.push_back(collider);
+        if (collider.hasComponent(this, Entity::Components::PLAYER)) {
+            playerEntities.push_back(collider);
         }
     }
-    std::vector<Entity*> enemies;
+    std::vector<Entity> enemies;
     for (auto& collider : colliders) {
-        if (collider->hasComponent(Entity::Components::ENEMY)) {
+        if (collider.hasComponent(this, Entity::Components::ENEMY)) {
             enemies.push_back(collider);
         }
     }
-    for (int i = 0; i < players.size(); ++i) {
-        Entity* e = players[i];
+    std::vector<Entity> playerBullets;
+    for (auto& collider : colliders) {
+        if (collider.hasComponent(this, Entity::Components::PLAYER_BULLET)) {
+            playerBullets.push_back(collider);
+        }
+    }
+    
+    for (int i = 0; i < playerEntities.size(); ++i) {
+        Entity player = playerEntities[i];
         for (int j = 0; j < enemies.size(); ++j) {
-        Entity* other = enemies[j];
+        Entity enemy = enemies[j];
             
-            SDL_FRect collider{ positions[e->index].x, positions[e->index].y,
-                static_cast<float>(sources[e->index].w), static_cast<float>(sources[e->index].h)};
-            SDL_FRect otherCollider{ positions[other->index].x, positions[other->index].y,
-                static_cast<float>(sources[other->index].w), static_cast<float>(sources[other->index].h)};
-            SDL_FRect result;
-            if (SDL_IntersectFRect(&collider, &otherCollider, &result)) {
-                //onCollision(*e, healths[e->index]);
-                onCollision(*other, healths[other->index]);
+            SDL_Rect collider{ destinations[player.index]};
+            SDL_Rect enemyCollider{ destinations[enemy.index]};
+            SDL_Rect result;
+            if (SDL_IntersectRect(&collider, &enemyCollider, &result)) {
+                damageEntity(enemy);
+            }
+        }
+    }
+
+    for (int i = 0; i < playerBullets.size(); ++i) {
+        Entity bullet = playerBullets[i];
+        for (int j = 0; j < enemies.size(); ++j) {
+            Entity enemy = enemies[j];
+            
+            SDL_Rect collider{ destinations[bullet.index]};
+            SDL_Rect enemyCollider{ destinations[enemy.index]};
+            SDL_Rect result;
+            if (SDL_IntersectRect(&collider, &enemyCollider, &result)) {
+                damageEntity(enemy);
+                damageEntity(bullet);
             }
         }
     }
 }
 
 void EntityManager::updateInput(Vector2 vel) {
-    std::vector<Entity*> players;
+    std::vector<Entity> playerEntities;
     for (auto& e : entities) {
-        if (e.hasComponent(Entity::Components::PLAYER)) {
-            players.push_back(&e);
+        if (e.hasComponent(this, Entity::Components::PLAYER)) {
+            playerEntities.push_back(e);
         }
     }
-    for (auto& player : players) {
-        velocities[player->index] = vel;
+    for (auto& player : playerEntities) {
+        velocities[player.index] = vel;
     }
 }
 
-void EntityManager::updateShooting(float dt, SDL_Rect bulletSpriteSrc) {
-    std::vector<Entity*> players;
+void EntityManager::updateShooting(float dt, SDL_Rect bulletSpriteSrc, int scale) {
+    std::vector<Entity> playerEntities;
     for (auto& e : entities) {
-        if (e.hasComponent(Entity::Components::PLAYER)) {
-            players.push_back(&e);
+        if (e.hasComponent(this, Entity::Components::PLAYER)) {
+            playerEntities.push_back(e);
         }
     }
     
-    for (auto& player : players) {
-       
-        //todo add time for cooldown
-        Entity* e = getPooledEntity();
-        Vector2 spawPoint = {positions[player->index].x + sources[player->index].w,
-            positions[player->index].y + sources[player->index].h / 2.0f};
+    for (auto& player : playerEntities) {
+        static Uint64 tp = 0;
+        if (tp < SDL_GetTicks64()) {
+            tp = SDL_GetTicks64() + this->players[player.index].shootingCooldown;
+            
+            Entity e = getPooledEntity();
+           
+            Vector2 spawPoint = {positions[player.index].x + destinations[player.index].w,
+                positions[player.index].y + destinations[player.index].h / 2};
         
-        poolBullet(e, bulletSpriteSrc, spawPoint);
-        return;
+            poolBullet(e, bulletSpriteSrc, spawPoint, scale);
+            return;
+        }
     }
 }
 
@@ -151,39 +201,48 @@ void EntityManager::createPool() {
     createEntity();
 }
 
-Entity* EntityManager::getPooledEntity() {
+Entity EntityManager::getPooledEntity() {
     for (auto& e : entities) {
-        if (e.components == 0) {
-            return &e;
+        if (components[e.index] == 0) {
+            return e;
         }
     }
-    Entity* e = createEntity();
+    Entity e = createEntity();
     return e;
 }
 
-void EntityManager::poolPlayer(Entity* e, SDL_Rect playerSpriteSrc, int height) {
-    setPositionComponent(e, {10.0f, height * 0.5f + 8});
-    setVelocityComponent(e, {0.0f, 0.0f} );
-    setSourceComponent(e, playerSpriteSrc);
+void EntityManager::poolPlayer(Entity e, SDL_Rect src, Vector2 pos, int scale) {
+    SDL_Rect dst = {pos.x, pos.y, src.w * scale, src.h * scale};
+    
+    setPositionComponent(e, pos);
+    setVelocityComponent(e, {0, 0} );
+    setSourceComponent(e, src);
+    setDestinationComponent(e, dst);
     setHealthComponent(e, 3);
     setCollisionComponent(e);
-    setPlayerComponent(e);
+    setPlayerComponent(e, {100});
 }
 
-void EntityManager::createEnemy(Entity* e, SDL_Rect enemySpriteSrc, int width, int i) {
-    setPositionComponent(e, {static_cast<float>(width), i * 600.0f / 20.0f});
-    setVelocityComponent(e, {-100.0f, 0.0f} );
-    setSourceComponent(e, enemySpriteSrc);
+void EntityManager::poolEnemy(Entity e, SDL_Rect src, Vector2 pos, int scale) {
+    SDL_Rect dst = {pos.x, pos.y, src.w * scale, src.h * scale};
+    
+    setPositionComponent(e, pos);
+    setVelocityComponent(e, {-50, 0} );
+    setSourceComponent(e, src);
+    setDestinationComponent(e, dst);
     setHealthComponent(e, 1);
     setCollisionComponent(e);
     setEnemyComponent(e);
 }
 
-void EntityManager::poolBullet(Entity* e, SDL_Rect bulletSpriteSrc, Vector2 pos) {
+void EntityManager::poolBullet(Entity e, SDL_Rect src, Vector2 pos, int scale) {
+    SDL_Rect dst = {pos.x, pos.y, src.w * scale, src.h * scale};
+    
     setPositionComponent(e, pos);
-    setVelocityComponent(e, {100.0f, 0.0f} );
-    setSourceComponent(e, bulletSpriteSrc);
+    setVelocityComponent(e, {100, 0} );
+    setSourceComponent(e, src);
+    setDestinationComponent(e, dst);
     setHealthComponent(e, 1);
     setCollisionComponent(e);
-    setBulletComponent(e);
+    setPlayerBulletComponent(e);
 }
